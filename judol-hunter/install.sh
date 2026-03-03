@@ -33,7 +33,7 @@ npm install -g pm2
 # Clone repository
 echo -e "${YELLOW}[4/10]${NC} Cloning repository..."
 cd /opt
-git clone https://github.com/YOUR_USERNAME/judol-hunter.git
+git clone https://github.com/FikyAgristaa/judol-hunter.git
 cd judol-hunter
 
 # Setup database

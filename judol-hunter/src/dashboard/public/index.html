@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Judol Hunter Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8 text-center">🔍 Judol Hunter Dashboard</h1>
+        
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" id="statsContainer">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="text-sm text-gray-400">Total Websites</div>
+                <div class="text-2xl font-bold" id="totalWebsites">0</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="text-sm text-gray-400">Verified</div>
+                <div class="text-2xl font-bold text-green-400" id="verifiedWebsites">0</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="text-sm text-gray-400">Reported</div>
+                <div class="text-2xl font-bold text-blue-400" id="reportedWebsites">0</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="text-sm text-gray-400">Payments Found</div>
+                <div class="text-2xl font-bold text-yellow-400" id="totalPayments">0</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="text-sm text-gray-400">Reports Success</div>
+                <div class="text-2xl font-bold text-green-400" id="successfulReports">0</div>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <div class="text-sm text-gray-400">Today Reports</div>
+                <div class="text-2xl font-bold text-purple-400" id="todayReports">0</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h2 class="text-xl font-bold mb-4">Websites Over Time</h2>
+                <canvas id="websitesChart"></canvas>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <h2 class="text-xl font-bold mb-4">Payment Methods</h2>
+                <canvas id="paymentsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Websites -->
+        <div class="bg-gray-800 p-4 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4">Recent Websites</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="text-left text-gray-400">
+                            <th class="pb-2">URL</th>
+                            <th class="pb-2">Status</th>
+                            <th class="pb-2">AI Score</th>
+                            <th class="pb-2">Found At</th>
+                        </tr>
+                    </thead>
+                    <tbody id="websitesTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Payments -->
+        <div class="bg-gray-800 p-4 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">Recent Payment Accounts</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="text-left text-gray-400">
+                            <th class="pb-2">Website</th>
+                            <th class="pb-2">Type</th>
+                            <th class="pb-2">Account</th>
+                            <th class="pb-2">Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentsTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStats() {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            
+            document.getElementById('totalWebsites').textContent = data.total_websites || 0;
+            document.getElementById('verifiedWebsites').textContent = data.verified_websites || 0;
+            document.getElementById('reportedWebsites').textContent = data.reported_websites || 0;
+            document.getElementById('totalPayments').textContent = data.total_payments || 0;
+            document.getElementById('successfulReports').textContent = data.successful_reports || 0;
+            document.getElementById('todayReports').textContent = data.today_reports || 0;
+        }
+
+        async function loadWebsites() {
+            const res = await fetch('/api/websites/recent?limit=10');
+            const websites = await res.json();
+            
+            const tbody = document.getElementById('websitesTable');
+            tbody.innerHTML = websites.map(w => `
+                <tr class="border-t border-gray-700">
+                    <td class="py-2">${w.url.substring(0, 50)}...</td>
+                    <td class="py-2">
+                        <span class="px-2 py-1 rounded text-xs ${
+                            w.status === 'verified' ? 'bg-green-600' :
+                            w.status === 'reported' ? 'bg-blue-600' :
+                            'bg-gray-600'
+                        }">${w.status}</span>
+                    </td>
+                    <td class="py-2">${w.ai_score ? w.ai_score.toFixed(2) : '-'}</td>
+                    <td class="py-2">${new Date(w.created_at).toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadPayments() {
+            const res = await fetch('/api/payments/recent?limit=10');
+            const payments = await res.json();
+            
+            const tbody = document.getElementById('paymentsTable');
+            tbody.innerHTML = payments.map(p => `
+                <tr class="border-t border-gray-700">
+                    <td class="py-2">${p.website_url.substring(0, 30)}...</td>
+                    <td class="py-2">${p.bank_name || p.ewallet_type || 'QRIS'}</td>
+                    <td class="py-2">${p.account_number || p.ewallet_number || 'QRIS'}</td>
+                    <td class="py-2">${p.confidence ? p.confidence.toFixed(2) + '%' : '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Refresh every 30 seconds
+        function refresh() {
+            loadStats();
+            loadWebsites();
+            loadPayments();
+        }
+
+        refresh();
+        setInterval(refresh, 30000);
+    </script>
+</body>
+</html>
